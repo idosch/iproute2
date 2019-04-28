@@ -3848,6 +3848,14 @@ static const char *cmd_name(uint8_t cmd)
 	case DEVLINK_CMD_REGION_SET: return "set";
 	case DEVLINK_CMD_REGION_NEW: return "new";
 	case DEVLINK_CMD_REGION_DEL: return "del";
+	case DEVLINK_CMD_TRAP_GET: return "get";
+	case DEVLINK_CMD_TRAP_SET: return "set";
+	case DEVLINK_CMD_TRAP_NEW: return "new";
+	case DEVLINK_CMD_TRAP_DEL: return "del";
+	case DEVLINK_CMD_TRAP_GROUP_GET: return "get";
+	case DEVLINK_CMD_TRAP_GROUP_SET: return "set";
+	case DEVLINK_CMD_TRAP_GROUP_NEW: return "new";
+	case DEVLINK_CMD_TRAP_GROUP_DEL: return "del";
 	default: return "<unknown cmd>";
 	}
 }
@@ -3876,6 +3884,16 @@ static const char *cmd_obj(uint8_t cmd)
 	case DEVLINK_CMD_REGION_NEW:
 	case DEVLINK_CMD_REGION_DEL:
 		return "region";
+	case DEVLINK_CMD_TRAP_GET:
+	case DEVLINK_CMD_TRAP_SET:
+	case DEVLINK_CMD_TRAP_NEW:
+	case DEVLINK_CMD_TRAP_DEL:
+		return "trap";
+	case DEVLINK_CMD_TRAP_GROUP_GET:
+	case DEVLINK_CMD_TRAP_GROUP_SET:
+	case DEVLINK_CMD_TRAP_GROUP_NEW:
+	case DEVLINK_CMD_TRAP_GROUP_DEL:
+		return "trap-group";
 	default: return "<unknown obj>";
 	}
 }
@@ -3901,6 +3919,8 @@ static bool cmd_filter_check(struct dl *dl, uint8_t cmd)
 }
 
 static void pr_out_region(struct dl *dl, struct nlattr **tb);
+static void pr_out_trap(struct dl *dl, struct nlattr **tb, bool array);
+static void pr_out_trap_group(struct dl *dl, struct nlattr **tb, bool array);
 
 static int cmd_mon_show_cb(const struct nlmsghdr *nlh, void *data)
 {
@@ -3956,6 +3976,33 @@ static int cmd_mon_show_cb(const struct nlmsghdr *nlh, void *data)
 		pr_out_mon_header(genl->cmd);
 		pr_out_region(dl, tb);
 		break;
+	case DEVLINK_CMD_TRAP_GET: /* fall through */
+	case DEVLINK_CMD_TRAP_SET: /* fall through */
+	case DEVLINK_CMD_TRAP_NEW: /* fall through */
+	case DEVLINK_CMD_TRAP_DEL:
+		mnl_attr_parse(nlh, sizeof(*genl), attr_cb, tb);
+		if (!tb[DEVLINK_ATTR_BUS_NAME] || !tb[DEVLINK_ATTR_DEV_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_ID] || !tb[DEVLINK_ATTR_TRAP_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_TYPE] || !tb[DEVLINK_ATTR_STATS] ||
+		    !tb[DEVLINK_ATTR_TRAP_STATE] ||
+		    !tb[DEVLINK_ATTR_TRAP_METADATA])
+			return MNL_CB_ERROR;
+		pr_out_mon_header(genl->cmd);
+		pr_out_trap(dl, tb, false);
+		break;
+	case DEVLINK_CMD_TRAP_GROUP_GET: /* fall through */
+	case DEVLINK_CMD_TRAP_GROUP_SET: /* fall through */
+	case DEVLINK_CMD_TRAP_GROUP_NEW: /* fall through */
+	case DEVLINK_CMD_TRAP_GROUP_DEL:
+		mnl_attr_parse(nlh, sizeof(*genl), attr_cb, tb);
+		if (!tb[DEVLINK_ATTR_BUS_NAME] || !tb[DEVLINK_ATTR_DEV_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_GROUP_ID] ||
+		    !tb[DEVLINK_ATTR_TRAP_GROUP_NAME] ||
+		    !tb[DEVLINK_ATTR_STATS])
+			return MNL_CB_ERROR;
+		pr_out_mon_header(genl->cmd);
+		pr_out_trap_group(dl, tb, false);
+		break;
 	}
 	return MNL_CB_OK;
 }
@@ -3969,7 +4016,9 @@ static int cmd_mon_show(struct dl *dl)
 	while ((cur_obj = dl_argv_index(dl, index++))) {
 		if (strcmp(cur_obj, "all") != 0 &&
 		    strcmp(cur_obj, "dev") != 0 &&
-		    strcmp(cur_obj, "port") != 0) {
+		    strcmp(cur_obj, "port") != 0 &&
+		    strcmp(cur_obj, "trap") != 0 &&
+		    strcmp(cur_obj, "trap-group") != 0) {
 			pr_err("Unknown object \"%s\"\n", cur_obj);
 			return -EINVAL;
 		}
@@ -3986,7 +4035,7 @@ static int cmd_mon_show(struct dl *dl)
 static void cmd_mon_help(void)
 {
 	pr_err("Usage: devlink monitor [ all | OBJECT-LIST ]\n"
-	       "where  OBJECT-LIST := { dev | port }\n");
+	       "where  OBJECT-LIST := { dev | port | trap | trap-group }\n");
 }
 
 static int cmd_mon(struct dl *dl)
@@ -6620,12 +6669,17 @@ static void pr_out_trap_metadata(struct dl *dl,
 	pr_out_array_end(dl);
 }
 
-static void pr_out_trap(struct dl *dl, struct nlattr **tb)
+static void pr_out_trap(struct dl *dl, struct nlattr **tb, bool array)
 {
 	uint8_t state = mnl_attr_get_u8(tb[DEVLINK_ATTR_TRAP_STATE]);
 	uint8_t type = mnl_attr_get_u8(tb[DEVLINK_ATTR_TRAP_TYPE]);
 
-	pr_out_handle_start_arr(dl, tb);
+
+	if (array)
+		pr_out_handle_start_arr(dl, tb);
+	else
+		__pr_out_handle_start(dl, tb, true, false);
+
 	pr_out_str(dl, "name", mnl_attr_get_str(tb[DEVLINK_ATTR_TRAP_NAME]));
 	pr_out_str(dl, "type", trap_type_name(type));
 	pr_out_str(dl, "state", trap_state_name(state));
@@ -6650,7 +6704,7 @@ static int cmd_trap_show_cb(const struct nlmsghdr *nlh, void *data)
 	    !tb[DEVLINK_ATTR_TRAP_METADATA] || !tb[DEVLINK_ATTR_STATS])
 		return MNL_CB_ERROR;
 
-	pr_out_trap(dl, tb);
+	pr_out_trap(dl, tb, true);
 
 	return MNL_CB_OK;
 }
@@ -6759,9 +6813,13 @@ err_trap_get:
 	return 0;
 }
 
-static void pr_out_trap_group(struct dl *dl, struct nlattr **tb)
+static void pr_out_trap_group(struct dl *dl, struct nlattr **tb, bool array)
 {
-	pr_out_handle_start_arr(dl, tb);
+	if (array)
+		pr_out_handle_start_arr(dl, tb);
+	else
+		__pr_out_handle_start(dl, tb, true, false);
+
 	pr_out_str(dl, "name",
 		   mnl_attr_get_str(tb[DEVLINK_ATTR_TRAP_GROUP_NAME]));
 	pr_out_stats(dl, tb[DEVLINK_ATTR_STATS]);
@@ -6780,7 +6838,7 @@ static int cmd_trap_group_show_cb(const struct nlmsghdr *nlh, void *data)
 	    !tb[DEVLINK_ATTR_TRAP_GROUP_NAME] || !tb[DEVLINK_ATTR_STATS])
 		return MNL_CB_ERROR;
 
-	pr_out_trap_group(dl, tb);
+	pr_out_trap_group(dl, tb, true);
 
 	return MNL_CB_OK;
 }
