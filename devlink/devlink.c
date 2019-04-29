@@ -3856,6 +3856,7 @@ static const char *cmd_name(uint8_t cmd)
 	case DEVLINK_CMD_TRAP_GROUP_SET: return "set";
 	case DEVLINK_CMD_TRAP_GROUP_NEW: return "new";
 	case DEVLINK_CMD_TRAP_GROUP_DEL: return "del";
+	case DEVLINK_CMD_TRAP_REPORT: return "report";
 	default: return "<unknown cmd>";
 	}
 }
@@ -3894,6 +3895,8 @@ static const char *cmd_obj(uint8_t cmd)
 	case DEVLINK_CMD_TRAP_GROUP_NEW:
 	case DEVLINK_CMD_TRAP_GROUP_DEL:
 		return "trap-group";
+	case DEVLINK_CMD_TRAP_REPORT:
+		return "trap-report";
 	default: return "<unknown obj>";
 	}
 }
@@ -3921,6 +3924,7 @@ static bool cmd_filter_check(struct dl *dl, uint8_t cmd)
 static void pr_out_region(struct dl *dl, struct nlattr **tb);
 static void pr_out_trap(struct dl *dl, struct nlattr **tb, bool array);
 static void pr_out_trap_group(struct dl *dl, struct nlattr **tb, bool array);
+static void pr_out_trap_report(struct dl *dl, struct nlattr **tb);
 
 static int cmd_mon_show_cb(const struct nlmsghdr *nlh, void *data)
 {
@@ -4003,6 +4007,14 @@ static int cmd_mon_show_cb(const struct nlmsghdr *nlh, void *data)
 		pr_out_mon_header(genl->cmd);
 		pr_out_trap_group(dl, tb, false);
 		break;
+	case DEVLINK_CMD_TRAP_REPORT:
+		mnl_attr_parse(nlh, sizeof(*genl), attr_cb, tb);
+		if (!tb[DEVLINK_ATTR_BUS_NAME] || !tb[DEVLINK_ATTR_DEV_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_ID] || !tb[DEVLINK_ATTR_TRAP_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_PAYLOAD])
+			return MNL_CB_ERROR;
+		pr_out_mon_header(genl->cmd);
+		pr_out_trap_report(dl, tb);
 	}
 	return MNL_CB_OK;
 }
@@ -4018,12 +4030,16 @@ static int cmd_mon_show(struct dl *dl)
 		    strcmp(cur_obj, "dev") != 0 &&
 		    strcmp(cur_obj, "port") != 0 &&
 		    strcmp(cur_obj, "trap") != 0 &&
-		    strcmp(cur_obj, "trap-group") != 0) {
+		    strcmp(cur_obj, "trap-group") &&
+		    strcmp(cur_obj, "trap-report") != 0) {
 			pr_err("Unknown object \"%s\"\n", cur_obj);
 			return -EINVAL;
 		}
 	}
 	err = _mnlg_socket_group_add(dl->nlg, DEVLINK_GENL_MCGRP_CONFIG_NAME);
+	if (err)
+		return err;
+	err = _mnlg_socket_group_add(dl->nlg, DEVLINK_GENL_MCGRP_TRAP_NAME);
 	if (err)
 		return err;
 	err = _mnlg_socket_recv_run(dl->nlg, cmd_mon_show_cb, dl);
@@ -4035,7 +4051,7 @@ static int cmd_mon_show(struct dl *dl)
 static void cmd_mon_help(void)
 {
 	pr_err("Usage: devlink monitor [ all | OBJECT-LIST ]\n"
-	       "where  OBJECT-LIST := { dev | port | trap | trap-group }\n");
+	       "where  OBJECT-LIST := { dev | port | trap | trap-group | trap-report }\n");
 }
 
 static int cmd_mon(struct dl *dl)
@@ -6656,6 +6672,13 @@ static const char *trap_metadata_name(const struct nlattr *nla_metadata)
 	default:
 		return "<unknown metadata type>";
 	}
+}
+
+static void pr_out_trap_report(struct dl *dl, struct nlattr **tb)
+{
+	__pr_out_handle_start(dl, tb, true, false);
+	pr_out_str(dl, "name", mnl_attr_get_str(tb[DEVLINK_ATTR_TRAP_NAME]));
+	pr_out_handle_end(dl);
 }
 
 static void pr_out_trap_metadata(struct dl *dl,
