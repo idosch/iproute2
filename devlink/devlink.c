@@ -4011,6 +4011,7 @@ static int cmd_mon_show_cb(const struct nlmsghdr *nlh, void *data)
 		mnl_attr_parse(nlh, sizeof(*genl), attr_cb, tb);
 		if (!tb[DEVLINK_ATTR_BUS_NAME] || !tb[DEVLINK_ATTR_DEV_NAME] ||
 		    !tb[DEVLINK_ATTR_TRAP_ID] || !tb[DEVLINK_ATTR_TRAP_NAME] ||
+		    !tb[DEVLINK_ATTR_TRAP_TYPE] ||
 		    !tb[DEVLINK_ATTR_TRAP_PAYLOAD])
 			return MNL_CB_ERROR;
 		pr_out_mon_header(genl->cmd);
@@ -6674,10 +6675,42 @@ static const char *trap_metadata_name(const struct nlattr *nla_metadata)
 	}
 }
 
+static void pr_out_trap_report_port(struct dl *dl, struct nlattr *nla_port,
+				    const char *name)
+{
+	struct nlattr *nla_port_attr;
+
+	pr_out_object_start(dl, name);
+	mnl_attr_for_each_nested(nla_port_attr, nla_port) {
+		switch (nla_port_attr->nla_type) {
+		case DEVLINK_ATTR_PORT_INDEX:
+			pr_out_uint(dl, "port_index",
+				    mnl_attr_get_u32(nla_port_attr));
+			break;
+		default:
+			break;
+		}
+	}
+	pr_out_object_end(dl);
+}
+
 static void pr_out_trap_report(struct dl *dl, struct nlattr **tb)
 {
+	uint8_t type = mnl_attr_get_u8(tb[DEVLINK_ATTR_TRAP_TYPE]);
+
 	__pr_out_handle_start(dl, tb, true, false);
 	pr_out_str(dl, "name", mnl_attr_get_str(tb[DEVLINK_ATTR_TRAP_NAME]));
+	pr_out_str(dl, "type", trap_type_name(type));
+	if (tb[DEVLINK_ATTR_TRAP_GROUP_NAME])
+		pr_out_str(dl, "group",
+			   mnl_attr_get_str(tb[DEVLINK_ATTR_TRAP_GROUP_NAME]));
+	pr_out_uint(dl, "length", tb[DEVLINK_ATTR_TRAP_PAYLOAD]->nla_len);
+	if (tb[DEVLINK_ATTR_TRAP_TIMESTAMP])
+		pr_out_u64(dl, "timestamp",
+			   mnl_attr_get_u64(tb[DEVLINK_ATTR_TRAP_TIMESTAMP]));
+	if (tb[DEVLINK_ATTR_TRAP_IN_PORT])
+		pr_out_trap_report_port(dl, tb[DEVLINK_ATTR_TRAP_IN_PORT],
+					"input_port");
 	pr_out_handle_end(dl);
 }
 
