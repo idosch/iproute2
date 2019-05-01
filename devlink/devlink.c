@@ -6676,21 +6676,16 @@ static const char *trap_metadata_name(const struct nlattr *nla_metadata)
 }
 
 static void pr_out_trap_report_port(struct dl *dl, struct nlattr *nla_port,
-				    const char *name)
+				    const char *name, struct nlattr **tb)
 {
-	struct nlattr *nla_port_attr;
+	int err;
+
+	err = mnl_attr_parse_nested(nla_port, attr_cb, tb);
+	if (err != MNL_CB_OK)
+		return;
 
 	pr_out_object_start(dl, name);
-	mnl_attr_for_each_nested(nla_port_attr, nla_port) {
-		switch (nla_port_attr->nla_type) {
-		case DEVLINK_ATTR_PORT_INDEX:
-			pr_out_uint(dl, "port_index",
-				    mnl_attr_get_u32(nla_port_attr));
-			break;
-		default:
-			break;
-		}
-	}
+	pr_out_port(dl, tb);
 	pr_out_object_end(dl);
 }
 
@@ -6710,7 +6705,7 @@ static void pr_out_trap_report(struct dl *dl, struct nlattr **tb)
 			   mnl_attr_get_u64(tb[DEVLINK_ATTR_TRAP_TIMESTAMP]));
 	if (tb[DEVLINK_ATTR_TRAP_IN_PORT])
 		pr_out_trap_report_port(dl, tb[DEVLINK_ATTR_TRAP_IN_PORT],
-					"input_port");
+					"input_port", tb);
 	pr_out_handle_end(dl);
 }
 
