@@ -1139,6 +1139,20 @@ int print_linkinfo(struct nlmsghdr *n, void *arg)
 		close_json_array(PRINT_JSON, NULL);
 	}
 
+	if (tb[IFLA_ALT_IFNAME_LIST]) {
+		struct rtattr *i, *alt_ifname_list = tb[IFLA_ALT_IFNAME_LIST];
+		int rem = RTA_PAYLOAD(alt_ifname_list);
+
+		open_json_array(PRINT_JSON, "altifnames");
+		for (i = RTA_DATA(alt_ifname_list); RTA_OK(i, rem);
+		     i = RTA_NEXT(i, rem)) {
+			print_nl();
+			print_string(PRINT_ANY, NULL,
+				     "    altname %s", rta_getattr_str(i));
+		}
+		close_json_array(PRINT_JSON, NULL);
+	}
+
 	print_string(PRINT_FP, NULL, "%s", "\n");
 	fflush(fp);
 	return 1;

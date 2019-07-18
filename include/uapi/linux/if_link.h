@@ -167,6 +167,9 @@ enum {
 	IFLA_NEW_IFINDEX,
 	IFLA_MIN_MTU,
 	IFLA_MAX_MTU,
+	IFLA_ALT_IFNAME_MOD, /* Alternative ifname to add/delete */
+	IFLA_ALT_IFNAME_LIST, /* nest */
+	IFLA_ALT_IFNAME, /* Alternative ifname */
 	__IFLA_MAX
 };
 

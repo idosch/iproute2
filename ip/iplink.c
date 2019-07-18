@@ -1617,6 +1617,84 @@ static int iplink_afstats(int argc, char **argv)
 	return 0;
 }
 
+static int iplink_altname_mod(int argc, char **argv, struct iplink_req *req)
+{
+	char *name = NULL;
+	char *dev = NULL;
+
+	while (argc > 0) {
+		if (matches(*argv, "name") == 0) {
+			NEXT_ARG();
+			if (check_altifname(*argv))
+				invarg("not a valid altifname", *argv);
+			name = *argv;
+		} else if (matches(*argv, "help") == 0) {
+			usage();
+		} else {
+			if (strcmp(*argv, "dev") == 0)
+				NEXT_ARG();
+			if (dev)
+				duparg2("dev", *argv);
+			if (check_altifname(*argv))
+				invarg("\"dev\" not a valid altifname", *argv);
+			dev = *argv;
+		}
+		argv++; argc--;
+	}
+
+	if (!dev) {
+		fprintf(stderr, "Not enough of information: \"dev\" argument is required.\n");
+		exit(-1);
+	}
+
+	if (!name) {
+		if (req->n.nlmsg_type != RTM_NEWALTIFNAME) {
+			name = dev;
+		} else {
+			fprintf(stderr, "Not enough of information: \"name\" argument is required.\n");
+			exit(-1);
+		}
+	}
+
+	addattr_l(&req->n, sizeof(*req), IFLA_ALT_IFNAME,
+		  dev, strlen(dev) + 1);
+	addattr_l(&req->n, sizeof(*req), IFLA_ALT_IFNAME_MOD,
+		  name, strlen(name) + 1);
+
+	if (rtnl_talk(&rth, &req->n, NULL) < 0)
+		return -2;
+
+	return 0;
+}
+
+static int iplink_altname(int argc, char **argv)
+{
+	struct iplink_req req = {
+		.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
+		.n.nlmsg_flags = NLM_F_REQUEST,
+		.i.ifi_family = preferred_family,
+	};
+
+	if (argc <= 0) {
+		usage();
+		exit(-1);
+	}
+
+	if (matches(*argv, "add") == 0) {
+		req.n.nlmsg_flags |= NLM_F_EXCL | NLM_F_CREATE | NLM_F_APPEND;
+		req.n.nlmsg_type = RTM_NEWALTIFNAME;
+	} else if (matches(*argv, "del") == 0) {
+		req.n.nlmsg_flags |= RTM_DELLINK;
+		req.n.nlmsg_type = RTM_DELALTIFNAME;
+	} else if (matches(*argv, "help") == 0) {
+		usage();
+	} else {
+		fprintf(stderr, "Operator required\n");
+		exit(-1);
+	}
+	return iplink_altname_mod(argc - 1, argv + 1, &req);
+}
+
 static void do_help(int argc, char **argv)
 {
 	struct link_util *lu = NULL;
@@ -1673,6 +1751,9 @@ int do_iplink(int argc, char **argv)
 		iplink_afstats(argc-1, argv+1);
 		return 0;
 	}
+
+	if (matches(*argv, "altname") == 0)
+		return iplink_altname(argc-1, argv+1);
 
 	if (matches(*argv, "help") == 0) {
 		do_help(argc-1, argv+1);
