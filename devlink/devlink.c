@@ -1149,6 +1149,8 @@ static int trap_action_get(const char *actionstr,
 		*p_action = DEVLINK_TRAP_ACTION_DROP;
 	} else if (strcmp(actionstr, "trap") == 0) {
 		*p_action = DEVLINK_TRAP_ACTION_TRAP;
+	} else if (strcmp(actionstr, "mirror") == 0) {
+		*p_action = DEVLINK_TRAP_ACTION_MIRROR;
 	} else {
 		pr_err("Unknown trap action \"%s\"\n", actionstr);
 		return -EINVAL;
@@ -7087,6 +7089,8 @@ static const char *trap_action_name(uint8_t action)
 		return "drop";
 	case DEVLINK_TRAP_ACTION_TRAP:
 		return "trap";
+	case DEVLINK_TRAP_ACTION_MIRROR:
+		return "mirror";
 	default:
 		return "<unknown action>";
 	}
@@ -7161,9 +7165,9 @@ static int cmd_trap_show_cb(const struct nlmsghdr *nlh, void *data)
 
 static void cmd_trap_help(void)
 {
-	pr_err("Usage: devlink trap set DEV trap TRAP [ action { trap | drop } ]\n");
+	pr_err("Usage: devlink trap set DEV trap TRAP [ action { trap | drop | mirror } ]\n");
 	pr_err("       devlink trap show [ DEV trap TRAP ]\n");
-	pr_err("       devlink trap group set DEV group GROUP [ action { trap | drop } ]\n");
+	pr_err("       devlink trap group set DEV group GROUP [ action { trap | drop | mirror } ]\n");
 	pr_err("                              [ policer POLICER ] [ nopolicer ]\n");
 	pr_err("       devlink trap group show [ DEV group GROUP ]\n");
 	pr_err("       devlink trap policer set DEV policer POLICER [ rate RATE ] [ burst BURST ]\n");
