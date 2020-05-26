@@ -293,6 +293,7 @@ static void ifname_map_free(struct ifname_map *ifname_map)
 #define DL_OPT_TRAP_POLICER_RATE	BIT(35)
 #define DL_OPT_TRAP_POLICER_BURST	BIT(36)
 #define DL_OPT_HEALTH_REPORTER_AUTO_DUMP     BIT(37)
+#define DL_OPT_TRAP_TC	BIT(38)
 
 struct dl_opts {
 	uint64_t present; /* flags of present items */
@@ -338,6 +339,7 @@ struct dl_opts {
 	uint32_t trap_policer_id;
 	uint64_t trap_policer_rate;
 	uint64_t trap_policer_burst;
+	uint16_t trap_tc;
 };
 
 struct dl {
@@ -543,6 +545,7 @@ static const enum mnl_attr_data_type devlink_policy[DEVLINK_ATTR_MAX + 1] = {
 	[DEVLINK_ATTR_TRAP_POLICER_ID] = MNL_TYPE_U32,
 	[DEVLINK_ATTR_TRAP_POLICER_RATE] = MNL_TYPE_U64,
 	[DEVLINK_ATTR_TRAP_POLICER_BURST] = MNL_TYPE_U64,
+	[DEVLINK_ATTR_TRAP_TC] = MNL_TYPE_U16,
 };
 
 static const enum mnl_attr_data_type
@@ -1554,6 +1557,13 @@ static int dl_argv_parse(struct dl *dl, uint64_t o_required,
 			if (err)
 				return err;
 			o_found |= DL_OPT_TRAP_POLICER_BURST;
+		} else if (dl_argv_match(dl, "tc") &&
+			   (o_all & DL_OPT_TRAP_TC)) {
+			dl_arg_inc(dl);
+			err = dl_argv_uint16_t(dl, &opts->trap_tc);
+			if (err)
+				return err;
+			o_found |= DL_OPT_TRAP_TC;
 		} else {
 			pr_err("Unknown option \"%s\"\n", dl_argv(dl));
 			return -EINVAL;
@@ -1693,6 +1703,8 @@ static void dl_opts_put(struct nlmsghdr *nlh, struct dl *dl)
 	if (opts->present & DL_OPT_TRAP_POLICER_BURST)
 		mnl_attr_put_u64(nlh, DEVLINK_ATTR_TRAP_POLICER_BURST,
 				 opts->trap_policer_burst);
+	if (opts->present & DL_OPT_TRAP_TC)
+		mnl_attr_put_u16(nlh, DEVLINK_ATTR_TRAP_TC, opts->trap_tc);
 }
 
 static int dl_argv_parse_put(struct nlmsghdr *nlh, struct dl *dl,
@@ -7229,6 +7241,9 @@ static void pr_out_trap_group(struct dl *dl, struct nlattr **tb, bool array)
 	if (tb[DEVLINK_ATTR_TRAP_POLICER_ID])
 		print_uint(PRINT_ANY, "policer", " policer %u",
 			   mnl_attr_get_u32(tb[DEVLINK_ATTR_TRAP_POLICER_ID]));
+	if (tb[DEVLINK_ATTR_TRAP_TC])
+		print_uint(PRINT_ANY, "tc", " tc %u",
+			   mnl_attr_get_u16(tb[DEVLINK_ATTR_TRAP_TC]));
 	pr_out_stats(dl, tb[DEVLINK_ATTR_STATS]);
 	pr_out_handle_end(dl);
 }
@@ -7285,7 +7300,8 @@ static int cmd_trap_group_set(struct dl *dl)
 
 	err = dl_argv_parse_put(nlh, dl,
 				DL_OPT_HANDLE | DL_OPT_TRAP_GROUP_NAME,
-				DL_OPT_TRAP_ACTION | DL_OPT_TRAP_POLICER_ID);
+				DL_OPT_TRAP_ACTION | DL_OPT_TRAP_POLICER_ID |
+				DL_OPT_TRAP_TC);
 	if (err)
 		return err;
 
