@@ -3369,17 +3369,31 @@ static int cmd_dev_metric_show(struct dl *dl)
 	struct nlmsghdr *nlh;
 	int err;
 
-	if (dl_argc(dl) == 0)
+	if (dl_argc(dl) == 0) {
 		flags |= NLM_F_DUMP;
+	} else if (dl_argv_match(dl, "group")) {
+		dl_arg_inc(dl);
+		err = dl_argv_uint32_t(dl, &dl->opts.metric_group);
+		if (err)
+			return err;
+		dl->opts.present |= DL_OPT_METRIC_GROUP;
+		flags |= NLM_F_DUMP;
+	}
 
 	nlh = mnlg_msg_prepare(dl->nlg, DEVLINK_CMD_METRIC_GET, flags);
 
 	if (dl_argc(dl) > 0) {
-		err = dl_argv_parse_put(nlh, dl, DL_OPT_HANDLE |
-					DL_OPT_METRIC_NAME, 0);
+		if (flags & NLM_F_DUMP) {
+			pr_err("Too many arguments\n");
+			return -EINVAL;
+		}
+
+		err = dl_argv_parse(dl, DL_OPT_HANDLE | DL_OPT_METRIC_NAME, 0);
 		if (err)
 			return err;
 	}
+
+	dl_opts_put(nlh, dl);
 
 	pr_out_section_start(dl, "metric");
 	err = _mnlg_socket_sndrcv(dl->nlg, nlh, cmd_dev_metric_show_cb, dl);
