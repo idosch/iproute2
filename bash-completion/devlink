@@ -38,6 +38,15 @@ _devlink_direct_complete()
             value=$(devlink -j dev param show 2>/dev/null \
                     | jq ".param[\"$dev\"][].name")
             ;;
+        dev_metric)
+            value=$(devlink -j dev metric show 2>/dev/null \
+                    | jq '.metric' | jq 'keys[]')
+            ;;
+        metric)
+            dev=${words[4]}
+            value=$(devlink -j dev metric show 2>/dev/null \
+                    | jq ".metric[\"$dev\"][].metric")
+            ;;
         port)
             value=$(devlink -j port show 2>/dev/null \
                     | jq '.port as $ports | $ports | keys[] as $key
@@ -262,6 +271,29 @@ _devlink_dev_flash()
      esac
 }
 
+# Completion for devlink dev metric
+_devlink_dev_metric()
+{
+    case "$cword" in
+        3)
+            COMPREPLY=( $( compgen -W "show" -- "$cur" ) )
+            return
+            ;;
+        4)
+            _devlink_direct_complete "dev_metric"
+            return
+            ;;
+        5)
+            COMPREPLY=( $( compgen -W "metric" -- "$cur" ) )
+            return
+            ;;
+        6)
+            _devlink_direct_complete "metric"
+            return
+            ;;
+    esac
+}
+
 # Completion for devlink dev
 _devlink_dev()
 {
@@ -274,7 +306,7 @@ _devlink_dev()
             fi
             return
             ;;
-        eswitch|param)
+        eswitch|param|metric)
             _devlink_dev_$command
             return
             ;;
