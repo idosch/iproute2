@@ -372,6 +372,8 @@ void print_rt_flags(FILE *fp, unsigned int flags)
 		print_string(PRINT_ANY, NULL, "%s ", "rt_offload");
 	if (flags & RTM_F_TRAP)
 		print_string(PRINT_ANY, NULL, "%s ", "rt_trap");
+	if (flags & RTM_F_QUEUE)
+		print_string(PRINT_ANY, NULL, "%s ", "rt_queue");
 
 	close_json_array(PRINT_JSON, NULL);
 }
