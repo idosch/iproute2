@@ -478,9 +478,8 @@ static int ipnh_parse_nhmsg(FILE *fp, const struct nhmsg *nhm, int len,
 		nhe->nh_has_res_grp = true;
 	}
 
-	if (tb[NHA_GROUP_HW_STATS_ENABLE]) {
-		nhe->nh_hw_stats =
-			!!rta_getattr_u8(tb[NHA_GROUP_HW_STATS_ENABLE]);
+	if (tb[NHA_HW_STATS_ENABLE]) {
+		nhe->nh_hw_stats = !!rta_getattr_u8(tb[NHA_HW_STATS_ENABLE]);
 		nhe->nh_has_hw_stats = true;
 	}
 
@@ -1079,7 +1078,7 @@ static int ipnh_modify(int cmd, unsigned int flags, int argc, char **argv)
 			if (ret)
 				return ret;
 
-			addattr8(&req.n, sizeof(req), NHA_GROUP_HW_STATS_ENABLE,
+			addattr8(&req.n, sizeof(req), NHA_HW_STATS_ENABLE,
 				 hw_stats);
 		} else if (strcmp(*argv, "help") == 0) {
 			usage();
