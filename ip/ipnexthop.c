@@ -317,6 +317,11 @@ static void parse_nh_group_stats_rta(const struct rtattr *grp_stats_attr,
 			rta = tb[NHA_GROUP_STATS_ENTRY_PACKETS];
 			nh_grp_stats->packets = rta_getattr_u64(rta);
 		}
+
+		if (tb[NHA_GROUP_STATS_ENTRY_PACKETS_HW]) {
+			rta = tb[NHA_GROUP_STATS_ENTRY_PACKETS_HW];
+			nh_grp_stats->packets_hw = rta_getattr_u64(rta);
+		}
 	}
 }
 
@@ -383,6 +388,9 @@ static void print_nh_grp_stats(const struct nh_entry *nhe)
 			   nhe->nh_grp_stats[i].nh_id);
 		print_u64(PRINT_ANY, "packets", " packets %llu",
 			  nhe->nh_grp_stats[i].packets);
+		if (show_details > 0)
+			print_u64(PRINT_ANY, "packets_hw", " packets_hw %llu",
+				  nhe->nh_grp_stats[i].packets_hw);
 
 		if (i != nhe->nh_groups_cnt - 1)
 			print_string(PRINT_FP, NULL, "\n", NULL);
@@ -470,6 +478,12 @@ static int ipnh_parse_nhmsg(FILE *fp, const struct nhmsg *nhm, int len,
 		nhe->nh_has_res_grp = true;
 	}
 
+	if (tb[NHA_GROUP_HW_STATS_ENABLE]) {
+		nhe->nh_hw_stats =
+			!!rta_getattr_u8(tb[NHA_GROUP_HW_STATS_ENABLE]);
+		nhe->nh_has_hw_stats = true;
+	}
+
 	if (tb[NHA_GROUP_STATS]) {
 		nhe->nh_grp_stats = calloc(nhe->nh_groups_cnt,
 					   sizeof(*nhe->nh_grp_stats));
@@ -545,6 +559,10 @@ static void __print_nexthop_entry(FILE *fp, const char *jsobj,
 
 	if (nhe->nh_fdb)
 		print_null(PRINT_ANY, "fdb", "fdb", NULL);
+
+	if (show_details > 0 && nhe->nh_has_hw_stats)
+		print_on_off(PRINT_ANY, "hw_stats", "hw_stats %s ",
+			     nhe->nh_hw_stats);
 
 	if (nhe->nh_grp_stats)
 		print_nh_grp_stats(nhe);
@@ -1052,6 +1070,17 @@ static int ipnh_modify(int cmd, unsigned int flags, int argc, char **argv)
 			if (rtnl_rtprot_a2n(&prot, *argv))
 				invarg("\"protocol\" value is invalid\n", *argv);
 			req.nhm.nh_protocol = prot;
+		} else if (!strcmp(*argv, "hw_stats")) {
+			bool hw_stats;
+			int ret;
+
+			NEXT_ARG();
+			hw_stats = parse_on_off("hw_stats", *argv, &ret);
+			if (ret)
+				return ret;
+
+			addattr8(&req.n, sizeof(req), NHA_GROUP_HW_STATS_ENABLE,
+				 hw_stats);
 		} else if (strcmp(*argv, "help") == 0) {
 			usage();
 		} else {
