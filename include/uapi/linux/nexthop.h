@@ -63,6 +63,9 @@ enum {
 	/* nested; nexthop group stats */
 	NHA_GROUP_STATS,
 
+	/* u8; nexthop group hardware stats enable */
+	NHA_GROUP_HW_STATS_ENABLE,
+
 	__NHA_MAX,
 };
 
@@ -125,6 +128,11 @@ enum {
 
 	/* u64; number of packets forwarded via the nexthop group entry */
 	NHA_GROUP_STATS_ENTRY_PACKETS,
+
+	/* u64; number of packets forwarded via the nexthop group entry in
+	 * hardware
+	 */
+	NHA_GROUP_STATS_ENTRY_PACKETS_HW,
 
 	__NHA_GROUP_STATS_ENTRY_MAX,
 };
