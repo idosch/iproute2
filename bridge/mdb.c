@@ -692,6 +692,8 @@ int do_mdb(int argc, char **argv)
 	if (argc > 0) {
 		if (matches(*argv, "add") == 0)
 			return mdb_modify(RTM_NEWMDB, NLM_F_CREATE|NLM_F_EXCL, argc-1, argv+1);
+		if (strcmp(*argv, "replace") == 0)
+			return mdb_modify(RTM_NEWMDB, NLM_F_CREATE|NLM_F_REPLACE, argc-1, argv+1);
 		if (matches(*argv, "delete") == 0)
 			return mdb_modify(RTM_DELMDB, 0, argc-1, argv+1);
 
