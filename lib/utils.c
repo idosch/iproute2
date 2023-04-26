@@ -1740,6 +1740,14 @@ bool parse_on_off(const char *msg, const char *realval, int *p_err)
 	return parse_one_of(msg, realval, values_on_off, ARRAY_SIZE(values_on_off), p_err);
 }
 
+bool parse_true_false(const char *msg, const char *realval, int *p_err)
+{
+	static const char * const values_true_false[] = { "false", "true" };
+
+	return parse_one_of(msg, realval, values_true_false,
+			    ARRAY_SIZE(values_true_false), p_err);
+}
+
 int parse_mapping_gen(int *argcp, char ***argvp,
 		      int (*key_cb)(__u32 *keyp, const char *key),
 		      int (*mapping_cb)(__u32 key, char *value, void *data),

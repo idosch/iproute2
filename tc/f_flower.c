@@ -49,6 +49,7 @@ static void explain(void)
 		"\n"
 		"Where: MATCH-LIST := [ MATCH-LIST ] MATCH\n"
 		"       MATCH      := {	indev DEV-NAME |\n"
+		"			l2_miss [ true | false ] |\n"
 		"			num_of_vlans VLANS_COUNT |\n"
 		"			vlan_id VID |\n"
 		"			vlan_prio PRIORITY |\n"
@@ -1559,6 +1560,14 @@ static int flower_parse_opt(struct filter_util *qu, char *handle,
 			if (check_ifname(*argv))
 				invarg("\"indev\" not a valid ifname", *argv);
 			addattrstrz(n, MAX_MSG, TCA_FLOWER_INDEV, *argv);
+		} else if (matches(*argv, "l2_miss") == 0) {
+			__u8 l2_miss;
+
+			NEXT_ARG();
+			l2_miss = parse_true_false("l2_miss", *argv, &ret);
+			if (ret < 0)
+				return ret;
+			addattr8(n, MAX_MSG, TCA_FLOWER_L2_MISS, l2_miss);
 		} else if (strcmp(*argv, "num_of_vlans") == 0) {
 			NEXT_ARG();
 			ret = get_u8(&num_of_vlans, *argv, 10);
@@ -2781,6 +2790,16 @@ static int flower_print_opt(struct filter_util *qu, FILE *f,
 		print_nl();
 		print_string(PRINT_ANY, "indev", "  indev %s",
 			     rta_getattr_str(attr));
+	}
+
+	if (tb[TCA_FLOWER_L2_MISS]) {
+		struct rtattr *attr = tb[TCA_FLOWER_L2_MISS];
+
+		print_nl();
+		print_string(PRINT_FP, "l2_miss", "  l2_miss %s",
+			     rta_getattr_u8(attr) ? "true" : "false");
+		print_bool(PRINT_JSON, "l2_miss", "  l2_miss",
+			   rta_getattr_u8(attr));
 	}
 
 	open_json_object("keys");
