@@ -186,6 +186,10 @@ static void print_protinfo(FILE *fp, struct rtattr *attr)
 				     ll_index_to_name(ifidx));
 		}
 
+		if (prtb[IFLA_BRPORT_BACKUP_NHID])
+			print_uint(PRINT_ANY, "backup_nhid", "backup_nhid %u ",
+				   rta_getattr_u32(prtb[IFLA_BRPORT_BACKUP_NHID]));
+
 		if (prtb[IFLA_BRPORT_ISOLATED])
 			print_on_off(PRINT_ANY, "isolated", "isolated %s ",
 				     rta_getattr_u8(prtb[IFLA_BRPORT_ISOLATED]));
@@ -311,6 +315,7 @@ static void usage(void)
 		"                               [ mab {on | off} ]\n"
 		"                               [ hwmode {vepa | veb} ]\n"
 		"                               [ backup_port DEVICE ] [ nobackup_port ]\n"
+		"                               [ backup_nhid NHID ]\n"
 		"                               [ self ] [ master ]\n"
 		"       bridge link show [dev DEV]\n");
 	exit(-1);
@@ -330,6 +335,7 @@ static int brlink_modify(int argc, char **argv)
 	};
 	char *d = NULL;
 	int backup_port_idx = -1;
+	__s32 backup_nhid = -1;
 	__s8 neigh_suppress = -1;
 	__s8 neigh_vlan_suppress = -1;
 	__s8 learning = -1;
@@ -493,6 +499,10 @@ static int brlink_modify(int argc, char **argv)
 			}
 		} else if (strcmp(*argv, "nobackup_port") == 0) {
 			backup_port_idx = 0;
+		} else if (strcmp(*argv, "backup_nhid") == 0) {
+			NEXT_ARG();
+			if (get_s32(&backup_nhid, *argv, 0))
+				invarg("invalid backup_nhid", *argv);
 		} else {
 			usage();
 		}
@@ -578,6 +588,10 @@ static int brlink_modify(int argc, char **argv)
 	if (backup_port_idx != -1)
 		addattr32(&req.n, sizeof(req), IFLA_BRPORT_BACKUP_PORT,
 			  backup_port_idx);
+
+	if (backup_nhid != -1)
+		addattr32(&req.n, sizeof(req), IFLA_BRPORT_BACKUP_NHID,
+			  backup_nhid);
 
 	addattr_nest_end(&req.n, nest);
 
