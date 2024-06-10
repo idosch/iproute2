@@ -232,7 +232,10 @@ a device.
 .BI tos " TOS"
 .TP
 .BI dsfield " TOS"
-select the TOS value to match.
+select the TOS value to match. In IPv4 this selector is used to match on the
+three "Type of Services" bits from RFC 791 (lower three DSCP bits), while in
+IPv6 the selector is used to match on the six DSCP bits from RFC 2474. In both
+cases, the ECN bits are not taken into account and must be set to zero.
 
 .TP
 .BI fwmark " MARK"
