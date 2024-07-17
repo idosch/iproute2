@@ -36,6 +36,8 @@ ip-rule \- routing policy database management
 .IR PREFIX " ] [ "
 .B  tos
 .IR TOS " ] [ "
+.B  dscp
+.IR DSCP " ] [ "
 .B  fwmark
 .IR FWMARK\fR[\fB/\fIMASK "] ] [ "
 .B  iif
@@ -236,6 +238,20 @@ select the TOS value to match. In IPv4 this selector is used to match on the
 three "Type of Services" bits from RFC 791 (lower three DSCP bits), while in
 IPv6 the selector is used to match on the six DSCP bits from RFC 2474. In both
 cases, the ECN bits are not taken into account and must be set to zero.
+
+.TP
+.BI dscp " DSCP"
+select the DSCP value to match. DSCP values can be written either directly as
+numeric values (valid values are 0-63), or using symbolic names specified in
+.B /etc/iproute2/rt_dsfield
+(however note that the file specifies full 8-bit dsfield values, whereas
+.B ip rule
+will only use the higher six bits).
+.B ip rule show
+will similarly format DSCP values as symbolic names if possible. The
+command line option
+.B -N
+turns the show translation off.
 
 .TP
 .BI fwmark " MARK"
