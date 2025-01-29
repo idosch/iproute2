@@ -668,6 +668,7 @@ void print_tm(const struct tcf_t *tm)
 static void print_tcstats_basic_hw(struct rtattr **tbs, const char *prefix)
 {
 	struct gnet_stats_basic bs_hw;
+	__u64 packets64_hw;
 
 	if (!tbs[TCA_STATS_BASIC_HW])
 		return;
@@ -675,24 +676,35 @@ static void print_tcstats_basic_hw(struct rtattr **tbs, const char *prefix)
 	memcpy(&bs_hw, RTA_DATA(tbs[TCA_STATS_BASIC_HW]),
 	       MIN(RTA_PAYLOAD(tbs[TCA_STATS_BASIC_HW]), sizeof(bs_hw)));
 
-	if (bs_hw.bytes == 0 && bs_hw.packets == 0)
+	if (tbs[TCA_STATS_PKT64_HW])
+		packets64_hw = rta_getattr_u64(tbs[TCA_STATS_PKT64_HW]);
+	else
+		packets64_hw = bs_hw.packets;
+
+	if (bs_hw.bytes == 0 && packets64_hw == 0)
 		return;
 
 	if (tbs[TCA_STATS_BASIC]) {
 		struct gnet_stats_basic bs;
+		__u64 packets64;
 
 		memcpy(&bs, RTA_DATA(tbs[TCA_STATS_BASIC]),
 		       MIN(RTA_PAYLOAD(tbs[TCA_STATS_BASIC]),
 			   sizeof(bs)));
 
-		if (bs.bytes >= bs_hw.bytes && bs.packets >= bs_hw.packets) {
+		if (tbs[TCA_STATS_PKT64])
+			packets64 = rta_getattr_u64(tbs[TCA_STATS_PKT64]);
+		else
+			packets64 = bs.packets;
+
+		if (bs.bytes >= bs_hw.bytes && packets64 >= packets64_hw) {
 			print_nl();
 			print_string(PRINT_FP, NULL, "%s", prefix);
 			print_lluint(PRINT_ANY, "sw_bytes",
 				     "Sent software %llu bytes",
 				     bs.bytes - bs_hw.bytes);
-			print_uint(PRINT_ANY, "sw_packets", " %u pkt",
-				   bs.packets - bs_hw.packets);
+			print_lluint(PRINT_ANY, "sw_packets", " %llu pkt",
+				     packets64 - packets64_hw);
 		}
 	}
 
@@ -700,7 +712,7 @@ static void print_tcstats_basic_hw(struct rtattr **tbs, const char *prefix)
 	print_string(PRINT_FP, NULL, "%s", prefix);
 	print_lluint(PRINT_ANY, "hw_bytes", "Sent hardware %llu bytes",
 		     bs_hw.bytes);
-	print_uint(PRINT_ANY, "hw_packets", " %u pkt", bs_hw.packets);
+	print_lluint(PRINT_ANY, "hw_packets", " %llu pkt", packets64_hw);
 }
 
 void print_tcstats2_attr(struct rtattr *rta, const char *prefix, struct rtattr **xstats)
